@@ -1,0 +1,10 @@
+<launch>
+
+  <node pkg="lab1_demo1" name="keys_to_twist_ramps" type="keys_to_twist_with_ramps.py">
+      <remap from="cmd_vel" to="cmd_vel_mux/input/teleop"/>
+  </node>
+
+  <node pkg="lab1_demo1" name="key_publisher" type="key_publisher.py">
+  </node>
+
+</launch>
