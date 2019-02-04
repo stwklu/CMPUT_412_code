@@ -8,10 +8,11 @@ from math import copysign
 from sensor_msgs.msg import LaserScan
 from sensor_msgs.msg import Joy
 
-"""
-Citation: Referred the code from :https://github.com/pirobot/rbx1/blob/indigo-devel/rbx1_apps/nodes/follower2.py
+from kobuki_msgs.msg import BumperEvent
 
-"""
+import thread
+
+import math
 
 
 class Follower():
@@ -56,10 +57,14 @@ class Follower():
         # Initialize the movement command
         self.move_cmd = Twist()
 
+        self.lock = thread.allocate_lock()
+
         # Publisher to control the robot's movement
         self.cmd_vel_pub = rospy.Publisher('/cmd_vel_mux/input/teleop', Twist, queue_size=5)
 
-        rospy.Subscriber("scan", LaserScan, self.scan_callback)
+        rospy.Subscriber("/mobile_base/events/bumper", BumperEvent, self.bumper_callback)
+
+        rospy.Subscriber("/scan", LaserScan, self.scan_callback)
 
         # Subscribe to the point cloud
         self.depth_subscriber = rospy.Subscriber('point_cloud', PointCloud2, self.set_cmd_vel, queue_size=5)
@@ -72,15 +77,45 @@ class Follower():
 
         rospy.loginfo("Ready to follow!")
 
+    def bumper_callback(self, msg):
+        if msg.state == 1:
+            self.move_cmd.linear.x = -self.max_linear_speed
+            self.move_cmd.angular.z *= -1
+
+            # self.cmd_vel_pub.publish(self.move_cmd)
+
     def scan_callback(self, msg):
         self.min_range_ahead = min(msg.ranges)
 
-        # if self.min_range_ahead < 0.4:
-        #     self.move_cmd.linear.x = (self.min_range_ahead - 0.4) * self.z_scale
+        min_n = 10000
+        self.lock.acquire()
+        try:
+
+            # if math.isnan(self.min_range_ahead):
+            #     self.move_cmd.linear.x = -self.max_linear_speed
+            #     print self.min_range_ahead
+
+            for item in msg.ranges:
+                if (not math.isnan(item)) and item < min_n:
+                    min_n = item
+                    # print min_n
+            #
+            print min_n
+            #
+            if min_n < 0.55 or min_n == 10000:
+                self.move_cmd.linear.x = -self.max_linear_speed
+                #
+                if self.START:
+                    self.cmd_vel_pub.publish(self.move_cmd)
+        finally:
+            self.lock.release()
+        #
+        # print min_n
 
     def joy_callback(self, msg):
         if msg.buttons[0] == 1:
             self.START = True
+            print True
 
         if msg.buttons[1] == 1:
             self.START = False
@@ -89,8 +124,8 @@ class Follower():
         # Initialize the centroid coordinates point count
         x = y = z = n = 0
 
-        # max_i = 0
-        # min_i = 0
+        max_i = 0
+        min_i = 0
 
         # Read in the x, y, z coordinates of all points in the cloud
         for point in point_cloud2.read_points(msg, skip_nans=True):
@@ -103,54 +138,59 @@ class Follower():
             z += pt_z
             n += 1
             #
-            # if pt_y > max_i:
-            #     max_i = pt_y
-            #
-            # if pt_y < min_i:
-            #     min_i = pt_y
-
+        #     if pt_z > max_i:
+        #         max_i = pt_z
+        #
+        #     if pt_z < min_i:
+        #         min_i = pt_z
+        #
         # print max_i, min_i
 
         # If we have points, compute the centroid coordinates
-        if n:
-            x /= n
-            y /= n
-            z /= n
 
-            print x, y, z
+        self.lock.acquire()
+        try:
 
-            # Check our movement thresholds
-            if (abs(z - self.goal_z) > self.z_threshold):
-                # Compute the angular component of the movement
-                linear_speed = (z - self.goal_z) * self.z_scale
+            if n:
+                x /= n
+                y /= n
+                z /= n
 
-                # Make sure we meet our min/max specifications
-                self.move_cmd.linear.x = copysign(max(self.min_linear_speed,
-                                                      min(self.max_linear_speed, abs(linear_speed))), linear_speed)
+                # print x, y, z
+
+                # Check our movement thresholds
+                if (abs(z - self.goal_z) > self.z_threshold):
+                    # Compute the angular component of the movement
+                    linear_speed = (z - self.goal_z) * self.z_scale
+
+                    # Make sure we meet our min/max specifications
+                    self.move_cmd.linear.x = copysign(max(self.min_linear_speed,
+                                                          min(self.max_linear_speed, abs(linear_speed))), linear_speed)
+                else:
+                    self.move_cmd.linear.x *= self.slow_down_factor
+
+                if (abs(x) > self.x_threshold):
+                    # Compute the linear component of the movement
+                    angular_speed = -x * self.x_scale
+
+                    # Make sure we meet our min/max specifications
+                    self.move_cmd.angular.z = copysign(max(self.min_angular_speed,
+                                                           min(self.max_angular_speed, abs(angular_speed))),
+                                                       angular_speed)
+                else:
+                    # Stop the rotation smoothly
+                    self.move_cmd.angular.z *= self.slow_down_factor
             else:
+                # Stop the robot smoothly
                 self.move_cmd.linear.x *= self.slow_down_factor
-
-            if (abs(x) > self.x_threshold):
-                # Compute the linear component of the movement
-                angular_speed = -x * self.x_scale
-
-                # Make sure we meet our min/max specifications
-                self.move_cmd.angular.z = copysign(max(self.min_angular_speed,
-                                                       min(self.max_angular_speed, abs(angular_speed))), angular_speed)
-            else:
-                # Stop the rotation smoothly
-                # self.move_cmd.angular.z *= self.slow_down_factor
+                self.move_cmd.angular.z = 0.3
                 pass
-        else:
-            # Stop the robot smoothly
-            self.move_cmd.linear.x *= self.slow_down_factor
-            # self.move_cmd.angular.z *= self.slow_down_factor
-            pass
 
+            if self.START:
+                self.cmd_vel_pub.publish(self.move_cmd)
+        finally:
+            self.lock.release()
         # Publish the movement command
-
-        if self.START:
-            self.cmd_vel_pub.publish(self.move_cmd)
 
     def shutdown(self):
         rospy.loginfo("Stopping the robot...")
