@@ -30,7 +30,7 @@ twist_pub = rospy.Publisher("/cmd_vel_mux/input/teleop", Twist, queue_size=1)
 led_pub_1 = rospy.Publisher('/mobile_base/commands/led1', Led, queue_size=1)
 led_pub_2 = rospy.Publisher('/mobile_base/commands/led2', Led, queue_size=1)
 
-sound_pub = rospy.Publisher('/mobile_base/commands/sound', Sound, queue_size=3)
+sound_pub = rospy.Publisher('/mobile_base/commands/sound', Sound, queue_size=1)
 
 max_rotate_vel = 0.5
 max_linear_vel = 0.25
@@ -39,7 +39,7 @@ degree_ninty = 4.5 / 2
 counter_loc1 = 0
 counter_loc2 = 0
 
-location_index = 2
+location_index = 3
 
 #
 TRIANGLE = 1
@@ -57,6 +57,12 @@ is_loc2_backing = False
 # the stop times of location 3
 loc3_stop_time = 2
 
+# the index of checked object of location 3
+loc3_step_index = 1
+
+# to change the size of window, so that it can see the vertical red line
+is_finishing_loc2 = False
+
 
 # location 1 states
 class moving_forward(smach.State):
@@ -69,7 +75,7 @@ class moving_forward(smach.State):
         global stop_line_flag, flag_line_flag
         if stop_line_flag == True:
             stop_line_flag = False
-            if userdata.cur_time + rospy.Duration(1) < rospy.Time.now():
+            if userdata.cur_time + rospy.Duration(2.0) < rospy.Time.now():
 
                 userdata.cur_time = rospy.Time.now()
                 twist_pub.publish(Twist())
@@ -114,6 +120,7 @@ class stop(smach.State):
         if userdata.cur_time + rospy.Duration(3) > rospy.Time.now():
             # userdata.cur_time = rospy.Time.now()
             twist_pub.publish(Twist())
+            flag_line_flag = False
             return 'keep'
         else:
             twist_pub.publish(current_twist)
@@ -135,12 +142,12 @@ class turning_left(smach.State):
 
     def execute(self, userdata):
         global flag_line_flag, isChecking
-        if userdata.cur_time + rospy.Duration(1) > rospy.Time.now():
+        if userdata.cur_time + rospy.Duration(1.0) > rospy.Time.now():
             twist_pub.publish(current_twist)
             flag_line_flag = False
             return 'moving_a_bit'
 
-        elif userdata.cur_time + rospy.Duration(degree_ninty / max_rotate_vel + 1) > rospy.Time.now():
+        elif userdata.cur_time + rospy.Duration(degree_ninty / max_rotate_vel + 1.0) > rospy.Time.now():
             temp_twist = Twist()
             temp_twist.linear.x = 0
             temp_twist.angular.z = max_rotate_vel
@@ -192,9 +199,9 @@ class checking_object_loc1(smach.State):
 
             led_pub_1.publish(Led.GREEN)
             led_pub_2.publish(Led.GREEN)
-            sound_pub.publish(2)
-            sound_pub.publish(2)
-            sound_pub.publish(2)
+            sound_pub.publish(0)
+            sound_pub.publish(0)
+            sound_pub.publish(0)
 
             counter_loc1 = 0
             isChecking = False
@@ -207,8 +214,8 @@ class checking_object_loc1(smach.State):
             userdata.cur_time = rospy.Time.now()
 
             led_pub_1.publish(Led.GREEN)
-            sound_pub.publish(2)
-            sound_pub.publish(2)
+            sound_pub.publish(0)
+            sound_pub.publish(0)
 
             counter_loc1 = 0
             isChecking = False
@@ -221,7 +228,7 @@ class checking_object_loc1(smach.State):
             userdata.cur_time = rospy.Time.now()
 
             led_pub_2.publish(Led.GREEN)
-            sound_pub.publish(2)
+            sound_pub.publish(0)
             counter_loc1 = 0
             isChecking = False
             return 'get_sth'
@@ -249,8 +256,8 @@ class turning_back(smach.State):
             twist_pub.publish(Twist())
             userdata.cur_time = rospy.Time.now()
             location_index += 1
-            led_pub_1.publish(Led.BLACK)
-            led_pub_2.publish(Led.BLACK)
+            # led_pub_1.publish(Led.BLACK)
+            # led_pub_2.publish(Led.BLACK)
             isChecking = False
             stop_line_flag = False
 
@@ -269,21 +276,24 @@ class moving_loc2(smach.State):
         if counter_loc2 > 0:
 
             if counter_loc2 == 1:
-                led_pub_2.publish(Led.GREEN)
-                sound_pub.publish(2)
+                led_pub_2.publish(Led.ORANGE)
+                sound_pub.publish(0)
             elif counter_loc2 == 2:
-                led_pub_1.publish(Led.GREEN)
-                sound_pub.publish(2)
-                sound_pub.publish(2)
+                led_pub_1.publish(Led.ORANGE)
+                sound_pub.publish(0)
+                sound_pub.publish(0)
             else:
-                led_pub_1.publish(Led.GREEN)
-                led_pub_2.publish(Led.GREEN)
-                sound_pub.publish(2)
-                sound_pub.publish(2)
-                sound_pub.publish(2)
+                led_pub_1.publish(Led.ORANGE)
+                led_pub_2.publish(Led.ORANGE)
+                sound_pub.publish(0)
+                sound_pub.publish(0)
+                sound_pub.publish(0)
 
-            if userdata.cur_time + rospy.Duration(0.7) > rospy.Time.now():
-                twist_pub.publish(current_twist)
+            if userdata.cur_time + rospy.Duration(0.5) > rospy.Time.now():
+                temp_twist = Twist()
+                temp_twist.linear.x = max_linear_vel
+                temp_twist.angular.z = 0
+                twist_pub.publish(temp_twist)
                 return 'moving'
             else:
                 twist_pub.publish(Twist())
@@ -304,8 +314,8 @@ class back_dirction(smach.State):
                              output_keys=['cur_time', 'cur_pose', 'cur_loc', 'cur_heading', 'coun_loc1'])
 
     def execute(self, userdata):
-        global is_loc2_backing
-        if userdata.cur_time + rospy.Duration((degree_ninty * 2 - 0.8) / max_rotate_vel) > rospy.Time.now():
+        global is_loc2_backing, is_finishing_loc2
+        if userdata.cur_time + rospy.Duration((degree_ninty * 2 - 0.9) / max_rotate_vel) > rospy.Time.now():
 
             temp_twist = Twist()
             temp_twist.linear.x = 0
@@ -317,6 +327,7 @@ class back_dirction(smach.State):
             twist_pub.publish(Twist())
             userdata.cur_time = rospy.Time.now()
             is_loc2_backing = True
+            is_finishing_loc2 = True
             return 'stop'
 
 
@@ -327,16 +338,22 @@ class moving_back_loc2(smach.State):
                              output_keys=['cur_time', 'cur_pose', 'cur_loc', 'cur_heading', 'coun_loc1'])
 
     def execute(self, userdata):
-        global backing_flag, is_loc2_backing
+        global backing_flag, is_loc2_backing, is_finishing_loc2
         if backing_flag:
-            if userdata.cur_time + rospy.Duration(0.5) > rospy.Time.now():
-                twist_pub.publish(current_twist)
+            if userdata.cur_time + rospy.Duration(2.7) > rospy.Time.now():
+                temp_twist = Twist()
+                temp_twist.linear.x = max_linear_vel
+                temp_twist.angular.z = 0
+
+                twist_pub.publish(temp_twist)
+                is_finishing_loc2 = False
                 return 'moving'
             else:
                 twist_pub.publish(Twist())
                 userdata.cur_time = rospy.Time.now()
                 backing_flag = False
                 is_loc2_backing = False
+                is_finishing_loc2 = False
                 return 'stop'
 
         else:
@@ -367,8 +384,8 @@ class finish_loc2(smach.State):
             location_index = 3
             flag_line_flag = False
 
-            led_pub_1.publish(Led.BLACK)
-            led_pub_2.publish(Led.BLACK)
+            # led_pub_1.publish(Led.BLACK)
+            # led_pub_2.publish(Led.BLACK)
 
             return 'stop'
 
@@ -381,7 +398,7 @@ class checking_object_loc3(smach.State):
                              output_keys=['cur_time', 'cur_pose', 'cur_loc', 'cur_heading', 'coun_loc1'])
 
     def execute(self, userdata):
-        global counter_loc1, isChecking
+        global counter_loc1, isChecking, loc3_step_index
         if userdata.cur_time + rospy.Duration(3) > rospy.Time.now():
             twist_pub.publish(Twist())
             return 'stay'
@@ -394,6 +411,7 @@ class checking_object_loc3(smach.State):
             userdata.cur_time = rospy.Time.now()
 
             isChecking = False
+            loc3_step_index += 1
 
             return 'wrong_shape'
         else:
@@ -403,9 +421,10 @@ class checking_object_loc3(smach.State):
             temp_twist.angular.z = -max_rotate_vel
             twist_pub.publish(temp_twist)
             userdata.cur_time = rospy.Time.now()
-            sound_pub.publish(2)
+            sound_pub.publish(0)
 
-            led_pub_1.publish(Led.RED)
+            led_pub_1.publish(Led.BLACK)
+            led_pub_2.publish(Led.RED)
 
             isChecking = False
 
@@ -450,6 +469,7 @@ class moving_terminate(smach.State):
         else:
             twist_pub.publish(Twist())
             userdata.cur_time = rospy.Time.now()
+            sound_pub.publish(1)
 
             return 'stop'
 
@@ -533,8 +553,15 @@ class main_controller():
             search_top = h - 50
             search_bot = h - 1
         else:
-            search_top = h - 50
+            search_top = h - 40
             search_bot = h - 1
+
+
+        if is_finishing_loc2:
+            search_top = h - 150
+            search_bot = h - 1
+
+
         mask[0:search_top, 0:w] = 0
         mask[search_bot:h, 0:w] = 0
 
@@ -591,6 +618,9 @@ class main_controller():
                     if is_loc2_backing:
                         backing_flag = True
 
+                elif area > 1000 and is_loc2_backing:
+                    backing_flag = True
+
         if isChecking:
             if location_index == 1:
                 mask = cv2.inRange(hsv, lower_red, upper_red)
@@ -598,7 +628,7 @@ class main_controller():
                 for item in contours:
                     area = cv2.contourArea(item)
 
-                    if area > 10:
+                    if area > 100:
                         counter_loc1 += 1
 
             elif location_index == 2:
@@ -642,6 +672,10 @@ class main_controller():
 
                 red_mask = cv2.inRange(hsv, lower_red, upper_red)
 
+                if loc3_step_index == 2:
+                    h, w, d = image.shape
+                    red_mask = red_mask[0:h, 0:(w / 2)]
+
                 im2, red_contours, hierarchy = cv2.findContours(red_mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
                 for item in red_contours:
@@ -666,8 +700,8 @@ class main_controller():
         # upper_red = numpy.array([360, 256, 256])
         #
         # red_mask = cv2.inRange(hsv, lower_red, upper_red)
-        # cv2.imshow("refer", red_mask)
-        # cv2.waitKey(3)
+        cv2.imshow("refer", image)
+        cv2.waitKey(3)
 
     def odom_callback(self, msg):
         global cur_pos, cur_heading
