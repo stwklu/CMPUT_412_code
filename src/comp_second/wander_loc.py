@@ -34,12 +34,12 @@ sound_pub = rospy.Publisher('/mobile_base/commands/sound', Sound, queue_size=1)
 
 max_rotate_vel = 0.5
 max_linear_vel = 0.25
-degree_ninty = 4.5 / 2
+degree_ninty = 4.0 / 2
 
 counter_loc1 = 0
 counter_loc2 = 0
 
-location_index = 3
+location_index = 1
 
 #
 TRIANGLE = 1
@@ -63,6 +63,11 @@ loc3_step_index = 1
 # to change the size of window, so that it can see the vertical red line
 is_finishing_loc2 = False
 
+time_after_stop = 2
+
+# flag of moving forward 
+moving_after_stop_flag = False
+
 
 # location 1 states
 class moving_forward(smach.State):
@@ -72,19 +77,15 @@ class moving_forward(smach.State):
                              output_keys=['cur_time', 'cur_pose', 'cur_loc', 'cur_heading', 'stop_flag', 'flag_flag'])
 
     def execute(self, userdata):
-        global stop_line_flag, flag_line_flag
+        global stop_line_flag, flag_line_flag,moving_after_stop_flag
         if stop_line_flag == True:
             stop_line_flag = False
-            if userdata.cur_time + rospy.Duration(2.0) < rospy.Time.now():
 
-                userdata.cur_time = rospy.Time.now()
-                twist_pub.publish(Twist())
-                flag_line_flag = False
-                return 'stop'
-            else:
-                twist_pub.publish(current_twist)
-                flag_line_flag = False
-                return 'moving'
+            userdata.cur_time = rospy.Time.now()
+            twist_pub.publish(Twist())
+            flag_line_flag = False
+            return 'stop'
+
         elif flag_line_flag == True:
 
             flag_line_flag = False
@@ -132,6 +133,29 @@ class stop(smach.State):
             return 'recover'
 
 
+
+class moving_after_stop(smach.State):
+    def __init__(self):
+        smach.State.__init__(self, outcomes=['moving', 'stop'],
+                             input_keys=['cur_time', 'cur_pose', 'cur_loc', 'cur_heading'],
+                             output_keys=['cur_time', 'cur_pose', 'cur_loc', 'cur_heading'])
+
+    def execute(self, userdata):
+        global stop_line_flag,flag_line_flag
+        if userdata.cur_time + rospy.Duration(2.0) > rospy.Time.now():
+            twist_pub.publish(current_twist)
+            stop_line_flag = False
+            flag_line_flag = False
+            return 'moving'
+        else:
+            twist_pub.publish(current_twist)
+            userdata.cur_time = rospy.Time.now()
+            stop_line_flag = False
+            flag_line_flag = False
+            return 'stop'
+
+
+
 class turning_left(smach.State):
     def __init__(self):
         smach.State.__init__(self,
@@ -153,6 +177,12 @@ class turning_left(smach.State):
             temp_twist.angular.z = max_rotate_vel
             twist_pub.publish(temp_twist)
             flag_line_flag = False
+
+
+            if location_index == 1:
+                isChecking = True
+
+
             return 'left_turning'
         else:
 
@@ -244,7 +274,7 @@ class turning_back(smach.State):
                              output_keys=['cur_time', 'cur_pose', 'cur_loc', 'cur_heading'])
 
     def execute(self, userdata):
-        global location_index, isChecking, stop_line_flag
+        global location_index, isChecking, stop_line_flag,flag_line_flag
         if userdata.cur_time + rospy.Duration(degree_ninty / max_rotate_vel) > rospy.Time.now():
             temp_twist = Twist()
             temp_twist.linear.x = 0
@@ -260,6 +290,7 @@ class turning_back(smach.State):
             # led_pub_2.publish(Led.BLACK)
             isChecking = False
             stop_line_flag = False
+            flag_line_flag = False
 
             return 'stop_back'
 
@@ -340,7 +371,7 @@ class moving_back_loc2(smach.State):
     def execute(self, userdata):
         global backing_flag, is_loc2_backing, is_finishing_loc2
         if backing_flag:
-            if userdata.cur_time + rospy.Duration(2.7) > rospy.Time.now():
+            if userdata.cur_time + rospy.Duration(2.3) > rospy.Time.now():
                 temp_twist = Twist()
                 temp_twist.linear.x = max_linear_vel
                 temp_twist.angular.z = 0
@@ -369,8 +400,8 @@ class finish_loc2(smach.State):
                              output_keys=['cur_time', 'cur_pose', 'cur_loc', 'cur_heading', 'coun_loc1'])
 
     def execute(self, userdata):
-        global location_index, flag_line_flag
-        if userdata.cur_time + rospy.Duration(degree_ninty / max_rotate_vel) > rospy.Time.now():
+        global location_index, flag_line_flag, loc3_stop_time
+        if userdata.cur_time + rospy.Duration((degree_ninty - 0.5) / max_rotate_vel) > rospy.Time.now():
 
             temp_twist = Twist()
             temp_twist.linear.x = 0
@@ -383,6 +414,7 @@ class finish_loc2(smach.State):
             userdata.cur_time = rospy.Time.now()
             location_index = 3
             flag_line_flag = False
+            loc3_stop_time=2
 
             # led_pub_1.publish(Led.BLACK)
             # led_pub_2.publish(Led.BLACK)
@@ -504,7 +536,7 @@ class main_controller():
         self.sm.userdata.flag_flag = flag_line_flag
 
     def image_callback(self, msg):
-        global stop_line_flag, flag_line_flag, counter_loc1, counter_loc2, object_type, backing_flag, current_type, max_linear_vel
+        global stop_line_flag, flag_line_flag, counter_loc1, counter_loc2, object_type, backing_flag, current_type, max_linear_vel,time_after_stop
         image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
         hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
         # white color
@@ -512,6 +544,17 @@ class main_controller():
         upper_white = numpy.array([360, 30, 255])
 
         mask = cv2.inRange(hsv, lower_white, upper_white)
+
+
+
+        if location_index == 2:
+            time_after_stop= 4.0
+        else:
+            time_after_stop = 2.0
+
+
+
+
 
         h, w, d = image.shape
         search_top = 3 * h / 4 + 20
@@ -567,8 +610,8 @@ class main_controller():
 
         im2, contours, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-        # if loc3_stop_time == 0:
-        #     max_linear_vel = 0.1
+        if loc3_step_index > 1 and location_index == 3:
+            max_linear_vel = 0.2
 
         if len(contours) > 0:
 
@@ -628,7 +671,7 @@ class main_controller():
                 for item in contours:
                     area = cv2.contourArea(item)
 
-                    if area > 100:
+                    if area > 50:
                         counter_loc1 += 1
 
             elif location_index == 2:
@@ -674,7 +717,7 @@ class main_controller():
 
                 if loc3_step_index == 2:
                     h, w, d = image.shape
-                    red_mask = red_mask[0:h, 0:(w / 2)]
+                    red_mask = red_mask[0:h, 0:(w / 4 * 3)]
 
                 im2, red_contours, hierarchy = cv2.findContours(red_mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -696,11 +739,11 @@ class main_controller():
 
                         if current_type == object_type:
                             break
-        # lower_red = numpy.array([0, 150, 50])
-        # upper_red = numpy.array([360, 256, 256])
-        #
-        # red_mask = cv2.inRange(hsv, lower_red, upper_red)
-        cv2.imshow("refer", image)
+        lower_red = numpy.array([0, 150, 50])
+        upper_red = numpy.array([360, 256, 256])
+        
+        red_mask = cv2.inRange(hsv, lower_red, upper_red)
+        cv2.imshow("refer", red_mask)
         cv2.waitKey(3)
 
     def odom_callback(self, msg):
@@ -731,11 +774,21 @@ class main_controller():
 
             smach.StateMachine.add('stop', stop(),
                                    transitions={'keep': 'stop',
-                                                'recover': 'moving_forward'},
+                                                'recover': 'moving_after_stop'},
                                    remapping={'cur_time': 'current_time',
                                               'cur_pose': 'current_pose',
                                               'cur_loc': 'current_loc',
                                               'cur_heading': 'current_heading'})
+
+
+            smach.StateMachine.add('moving_after_stop', moving_after_stop(),
+                                   transitions={'moving': 'moving_after_stop',
+                                                'stop': 'moving_forward'},
+                                   remapping={'cur_time': 'current_time',
+                                              'cur_pose': 'current_pose',
+                                              'cur_loc': 'current_loc',
+                                              'cur_heading': 'current_heading'})
+
 
             smach.StateMachine.add('turning_left', turning_left(),
                                    transitions={'moving_a_bit': 'turning_left',
