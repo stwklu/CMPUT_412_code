@@ -9,7 +9,7 @@
 
   <include file="$(find turtlebot_teleop)/launch/logitech.launch"/>
 
-  <node pkg="navigation" type="moving_around" name="moving_around" output="screen"/>
+  <node pkg="navigation" type="moving_around" name="following_line" output="screen"/>
 
   <node pkg="gmapping" type="slam_gmapping" name="slam_gmapping" output="screen">
     <param name="base_frame" value="$(arg base_frame)"/>
@@ -49,4 +49,6 @@
     <param name="lasamplestep" value="0.005"/>
     <remap from="scan" to="$(arg scan_topic)"/>
   </node>
+
+  <include file="$(find turtlebot_navigation)/launch/includes/move_base.launch.xml"/>
 </launch>
