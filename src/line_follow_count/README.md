@@ -6,13 +6,21 @@ This project is a warehouse robot prototype using vision signal.
 A race track shaped loop with a solid white line marks the path to follow in our use case.
 When travelling in the counterclockwise (CCW) direction, red stop lines indicate where the robot should stop.
 The robot will be initially place in full stop at the first stop line.
-The robot must stay on the line while looping around the track.
-There are four stop lines, once you have done a full loop and reach the start stop line your run is done.
-There are 3 locations for your robot to get extra points.
-Location 1 is marked by a short red line adjacent to the track, your robot has the chance to earn points by counting a number of objects (one, two, or three) at this location.
-Location 2 is down a detour, marked by a red line adjacent to the track, again your robot has the chance to earn points by counting the number of objects (one, two, or three).
-Location 3 has three separate red line markers, one for each shape (square, circle, triangle).
-
+The robot stays on the line while looping around the track.
+There are four stop lines, once the robot has done a full loop and reach the start stop line the run is done.
+There are 3 locations for specific tasks.
+![](course.png)
+![](course_real.png)
+* Location 1 is marked by a short red line adjacent to the track, the robot a number of objects (one, two, or three) at this location, and signal with LEDs(same as number of objects counted), and beep for the same number of time.
+![](marker.png)
+![](location_1.png)
+* Location 2 is down a detour, marked by a red line adjacent to the track, the robot will count the number of objects (one, two, or three), and signal with LEDs(same as number of objects counted), and beep for the same number of time.
+Only one of the objects will appear in green color, the robot will memorize the shape of this object.
+![](location_2.png)
+* Location 3 has three separate red line markers, one for each shape (square, circle, triangle). The robot will look for the same shape it memorized from the green object at location 2, and signal with LED and beep sound indicating the match.
+![](location_3_1.png)
+![](location_3_2.png)
+![](location_3_3.png)
 
 ![](header.png)
 
@@ -20,6 +28,7 @@ Location 3 has three separate red line markers, one for each shape (square, circ
 - This project is developed and tested under [Ubuntu 16.4](https://www.ubuntu.com/download/alternative-downloads) and [ROS Kinetic](http://wiki.ros.org/kinetic) platform.
 - This project is to be executed on [kobuki turtlebot](https://www.turtlebot.com/turtlebot2/).
 - [openni2 camera](http://wiki.ros.org/openni_camera) and [launch](http://wiki.ros.org/openni2_launch) packages.
+- [OpenCv](http://wiki.ros.org/vision_opencv) package should be installed.
 
 ## Installation
 Open a terminal and type the following bash commands in order
@@ -82,7 +91,7 @@ The state machine governing the execution of the whole task is constituted by an
   * `checking_object_loc3` : In this state, the turtlebot check the geometric primitives on the left hand side of the route by order, and signal when the target observed at location 2 is presented.
 
 * **7 utility states**. These states only execute basic robot movements that needed for bridging task states.
-  * `turning_back` : Turn the turtlebot by 180 degree from counter-clockwise.
+  * `turning_back` : Turn the turtlebot by 90 degree from clockwise.
   * `turning_left` : Turn the turtlebot by 90 degree counter-clockwise.
   * `right_turning_back` : Turn the turtlebot by 90 degree clockwise.
   * `moving_terminate` : Check all flags to determine if need to stop.
