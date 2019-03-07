@@ -1,6 +1,7 @@
 <launch>
+  <include file="$(find turtlebot_navigation)/launch/includes/velocity_smoother.launch.xml"/>
+  <include file="$(find turtlebot_navigation)/launch/includes/safety_controller.launch.xml"/>
 
-  <arg name="3d_sensor" default="$(env TURTLEBOT_3D_SENSOR)"/>
 
   <include file="$(find turtlebot_bringup)/launch/minimal.launch"/>
 
@@ -41,8 +42,25 @@
 
   </node>
 
+  <!--<node pkg="pose_estimation" type="demo5.py" name="naving_square" output="screen"/>-->
+  
   <node pkg="pose_estimation" type="moving_to_tags.py" name="moving" output="screen"/>
 
+  <arg name="tag_trans" default="0 -0.18 0 0 0 0"/>
+  <arg name="tag_rot" default="0 0 0 0 0 -1.57"/>
+
+  <node pkg="tf" type="static_transform_publisher" name="ar_2_up" args="$(arg tag_rot) ar_marker_2 ar_2_up 100"/>
+  <node pkg="tf" type="static_transform_publisher" name="ar_3_up" args="$(arg tag_rot) ar_marker_3 ar_3_up 100"/>
+  <node pkg="tf" type="static_transform_publisher" name="ar_4_up" args="$(arg tag_rot) ar_marker_4 ar_4_up 100"/>
+
+
+  <node pkg="tf" type="static_transform_publisher" name="item_2" args="$(arg tag_trans) ar_2_up item_2 100"/>
+  <node pkg="tf" type="static_transform_publisher" name="item_3" args="$(arg tag_trans) ar_3_up item_3 100"/>
+  <node pkg="tf" type="static_transform_publisher" name="item_4" args="$(arg tag_trans) ar_4_up item_4 100"/>
+
+
+
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find turtlebot_stage)/rviz/robot_navigation.rviz"/>
 
 
 </launch>
