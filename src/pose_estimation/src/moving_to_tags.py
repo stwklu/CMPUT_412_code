@@ -18,13 +18,11 @@ from kobuki_msgs.msg import Sound
 import smach
 import smach_ros
 
-from tf import transformation
-
 # Global variables
 twist_pub = rospy.Publisher("/cmd_vel_mux/input/teleop", Twist, queue_size=1)
 current_pose = [(0, 0, 0), (0, 0, 0, 0)]
 linear_velocity = 0.15
-rotate_velocity = 0.5
+rotate_velocity = 0.43
 current_id = 2
 
 target_pose = None
@@ -34,8 +32,8 @@ y_threshold = 0.05
 x_threshold = 0.05
 y_scale = 0.2
 x_scale = 0.5
-max_angular_speed = 2.0
-min_angular_speed = 0.5
+max_angular_speed = 0.4
+min_angular_speed = 0.2
 max_linear_speed = 0.3
 min_linear_speed = 0.1
 goal_x = 0.9
@@ -225,13 +223,20 @@ def get_goal_pose():
 
         return None
 
-    euler = transformation.euler_from_quarternion(rot)
+    euler = tf.transformations.euler_from_quaternion(rot)
+    #
+    # euler[0] = 0.0
+    # euler[1] = 0.0
+    # euler[2] = (euler[2] + 3.1415926535 * 2) % (3.1415926535 * 2) - 3.1415926535
 
-    euler[0] = 0.0
-    euler[1] = 0.0
-    euler[2] = (euler[2] + 3.1415926535 * 2) % (3.1415926535 * 2) - 3.1415926535
+    # e3 = 0
 
-    new_rot = transformation.quarternion_from_euler(euler)
+    if euler[2] > 0:
+        e3 = euler[2] - 3.1415926535
+    else:
+        e3 = euler[2] + 3.1415926535
+
+    new_rot = tf.transformations.quaternion_from_euler(0.0, 0.0, euler[2])
 
     goal_pose = MoveBaseGoal()
     goal_pose.target_pose.header.frame_id = '/odom'
