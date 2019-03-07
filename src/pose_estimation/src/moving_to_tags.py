@@ -18,12 +18,14 @@ from kobuki_msgs.msg import Sound
 import smach
 import smach_ros
 
+from tf import transformation
+
 # Global variables
 twist_pub = rospy.Publisher("/cmd_vel_mux/input/teleop", Twist, queue_size=1)
 current_pose = [(0, 0, 0), (0, 0, 0, 0)]
 linear_velocity = 0.15
 rotate_velocity = 0.5
-current_id = 3
+current_id = 2
 
 target_pose = None
 
@@ -78,11 +80,11 @@ class rotate_check(smach.State):
 
     def execute(self, userdata):
 
-        if current_id < 4 and long_goal:
+        if current_id <= 4 and long_goal:
             twist = Twist()
             twist_pub.publish(twist)
             return 'found'
-        elif current_id < 4 and (long_goal is None):
+        elif current_id <= 4 and (long_goal is None):
 
             if found:
                 twist = Twist()
@@ -215,7 +217,7 @@ def joy_callback(msg):
 def get_goal_pose():
     listener = tf.TransformListener()
 
-    mark_frame_id = '/ar_marker_' + str(current_id)
+    mark_frame_id = '/item_' + str(current_id)
     try:
         listener.waitForTransform('/odom', mark_frame_id, rospy.Time(), rospy.Duration(4.0))
         (trans, rot) = listener.lookupTransform('/odom', mark_frame_id, rospy.Time(0))
@@ -223,15 +225,23 @@ def get_goal_pose():
 
         return None
 
+    euler = transformation.euler_from_quarternion(rot)
+
+    euler[0] = 0.0
+    euler[1] = 0.0
+    euler[2] = (euler[2] + 3.1415926535 * 2) % (3.1415926535 * 2) - 3.1415926535
+
+    new_rot = transformation.quarternion_from_euler(euler)
+
     goal_pose = MoveBaseGoal()
     goal_pose.target_pose.header.frame_id = '/odom'
-    goal_pose.target_pose.pose.position.x = 1.0
-    goal_pose.target_pose.pose.position.y = 0.0
+    goal_pose.target_pose.pose.position.x = trans[0]
+    goal_pose.target_pose.pose.position.y = trans[1]
     goal_pose.target_pose.pose.position.z = 0.0
     goal_pose.target_pose.pose.orientation.x = 0.0
     goal_pose.target_pose.pose.orientation.y = 0.0
-    goal_pose.target_pose.pose.orientation.z = 0.0
-    goal_pose.target_pose.pose.orientation.w = 1.0
+    goal_pose.target_pose.pose.orientation.z = new_rot[2]
+    goal_pose.target_pose.pose.orientation.w = new_rot[3]
 
     return goal_pose
 
