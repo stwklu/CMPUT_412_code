@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+from math import copysign
+
 import rospy, cv2, cv_bridge, numpy
 from tf.transformations import decompose_matrix, euler_from_quaternion
 from sensor_msgs.msg import Image
@@ -16,6 +18,12 @@ import smach_ros
 import actionlib
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 from geometry_msgs.msg import PoseWithCovarianceStamped
+from ar_track_alvar_msgs.msg import AlvarMarkers
+import tf
+from sensor_msgs.msg import Joy
+
+from nav_msgs.srv import SetMap
+from nav_msgs.msg import OccupancyGrid
 
 integral = 0
 
@@ -87,6 +95,46 @@ center_waypoints = [(), ()]
 square_waypoints = [(), ()]
 
 client = None
+
+current_pose = [(0, 0, 0), (0, 0, 0, 0)]
+linear_velocity = 0.15
+rotate_velocity = 0.43
+current_id = 2
+
+target_pose = None
+
+search_origin = [(0, 0, 0), (0, 0, 0, 0)]
+y_threshold = 0.05
+x_threshold = 0.05
+y_scale = 0.2
+x_scale = 0.5
+max_angular_speed = 0.4
+min_angular_speed = 0.2
+max_linear_speed = 0.3
+min_linear_speed = 0.1
+goal_x = 0.9
+
+long_goal = None
+found = False
+
+unmarked_location = None
+
+loc4_task_id = 1
+
+amcl_pose = None
+
+waypoints = [[(3.24835373927, -1.40084858646, 0.0), (0.0, 0.0, -0.804220067176, 0.594331627588)],  # 1
+             [(1.74468228844, -2.84314082869, 0.0), (0.0, 0.0, 0.989949746297, 0.141419587774)],  # 2
+             [(0.945313977309, -1.26111663468, 0.0), (0.0, 0.0, 0.854504163474, 0.519444544302)],  # 3
+             [(-0.0848826540415, -2.39410610964, 0.0), (0.0, 0.0, -0.798635510047, 0.601815023152)],  # 4
+             [(3.24835373927, -1.40084858646, 0.0), (0.0, 0.0, -0.804220067176, 0.594331627588)],  # 5
+             [(1.74468228844, -2.84314082869, 0.0), (0.0, 0.0, 0.989949746297, 0.141419587774)],  # 6
+             [(0.945313977309, -1.26111663468, 0.0), (0.0, 0.0, 0.854504163474, 0.519444544302)],  # 7
+             [(-0.0848826540415, -2.39410610964, 0.0), (0.0, 0.0, -0.798635510047, 0.601815023152)]]  # 8
+
+off_ramp_exit_pose = [(3.24835373927, -1.40084858646, 0.0), (0.0, 0.0, -0.804220067176, 0.594331627588)]
+
+ar_sub = None
 
 
 # location 1 states
@@ -451,28 +499,46 @@ class finish_loc2(smach.State):
 
 class moving_on_line(smach.State):
     def __init__(self):
-        smach.State.__init__(self, outcomes=['stop', 'moving'],
+        smach.State.__init__(self, outcomes=['stop'],
                              input_keys=['cur_time', 'cur_pose', 'cur_loc', 'cur_heading', 'stop_flag', 'flag_flag'],
                              output_keys=['cur_time', 'cur_pose', 'cur_loc', 'cur_heading', 'stop_flag', 'flag_flag'])
 
     def execute(self, userdata):
-        global stop_line_flag, flag_line_flag, moving_after_stop_flag, is_end_of_line, is_selecting_second_line
-        if is_end_of_line:
-            twist = Twist()
-            twist_pub.publish(twist)
-            return 'stop'
-        else:
-            twist_pub.publish(current_twist)
-            is_end_of_line = False
-            is_selecting_second_line = False
+        global stop_line_flag, flag_line_flag, moving_after_stop_flag, is_end_of_line, is_selecting_second_line, location_index
 
-            return 'moving'
+        # send map and initial pose to reset amcl
+        new_map = rospy.wait_for_message("/map", OccupancyGrid)
+        rospy.init_node('set_map_service')
+        rospy.wait_for_service('SetMap')
+        set_map = rospy.ServiceProxy('map_service', SetMap)
+        pose_stamped = PoseWithCovarianceStamped()
+        pose_stamped.header.frame_id = 'map'
+        pose_stamped.header.stamp = rospy.Time.now()
+
+        pose_stamped.pose.position.x = 0
+        pose_stamped.pose.position.y = 0
+        pose_stamped.pose.position.z = 0
+        pose_stamped.pose.orientation.x = 0
+        pose_stamped.pose.orientation.y = 0
+        pose_stamped.pose.orientation.z = 0
+        pose_stamped.pose.orientation.w = 1
+
+        # Finish the remaining line by following waypoints
+        set_map(new_map, pose_stamped)
+
+        for pose in line_wayspoints:
+            client.send_goal(pose)
+            client.wait_for_result()
+
+        location_index += 1
+
+        return 'stop'
 
 
 # Move to the center of the location 4
 class moving_center(smach.State):
     def __init__(self):
-        smach.State.__init__(self, outcomes=['arrived'],
+        smach.State.__init__(self, outcomes=['to_task1', 'to_task2', 'to_task3', 'back'],
                              input_keys=['cur_time', 'cur_pose', 'cur_loc', 'cur_heading', 'coun_loc1'],
                              output_keys=['cur_time', 'cur_pose', 'cur_loc', 'cur_heading', 'coun_loc1'])
 
@@ -480,65 +546,80 @@ class moving_center(smach.State):
         client.send_goal(center_waypoints)
         client.wait_for_result()
 
-        return 'arrived'
+        if loc4_task_id == 1:
+
+            return 'to_task1'
+        elif loc4_task_id == 2:
+
+            return 'to_task2'
+        elif loc4_task_id == 3:
+
+            return 'to_task3'
+
+        else:
+            return 'back'
 
 
 class rotate_check(smach.State):
     global found, twist_pub
 
     def __init__(self):
-        smach.State.__init__(self, outcomes=['found', 'not_found', 'finished'])
+        smach.State.__init__(self, outcomes=['found', 'not_found'],
+                             input_keys=['cur_time', 'cur_pose', 'cur_loc', 'cur_heading', 'coun_loc1'],
+                             output_keys=['cur_time', 'cur_pose', 'cur_loc', 'cur_heading', 'coun_loc1'])
 
     def execute(self, userdata):
-        pass
-        # if current_id <= 4 and long_goal:
-        #     twist = Twist()
-        #     twist_pub.publish(twist)
-        #     return 'found'
-        # elif current_id <= 4 and (long_goal is None):
-        #
-        #     if found:
-        #         twist = Twist()
-        #         twist_pub.publish(twist)
-        #
-        #         return 'found'
-        #
-        #     else:
-        #
-        #         twist = Twist()
-        #         twist.linear.x = 0
-        #         twist.angular.z = rotate_velocity
-        #         twist_pub.publish(twist)
-        #         return 'not_found'
-        # else:
-        #     return 'finished'
+        if long_goal:
+            twist = Twist()
+            twist_pub.publish(twist)
+            return 'found'
+        else:
+
+            if found:
+                twist = Twist()
+                twist_pub.publish(twist)
+
+                return 'found'
+
+            else:
+
+                twist = Twist()
+                twist.linear.x = 0
+                twist.angular.z = rotate_velocity
+                twist_pub.publish(twist)
+                return 'not_found'
 
 
-# class rough_close(smach.State):
-#     global found, twist_pub
-#
-#     def __init__(self):
-#         smach.State.__init__(self, outcomes=['moving', 'arrived'])
-#
-#     def execute(self, userdata):
-#
-#         if long_goal:
-#
-#             twist_pub.publish(long_goal)
-#             return 'moving'
-#         else:
-#             return 'arrived'
+class rough_close(smach.State):
+    global found, twist_pub
+
+    def __init__(self):
+        smach.State.__init__(self, outcomes=['moving', 'arrived'],
+                             input_keys=['cur_time', 'cur_pose', 'cur_loc', 'cur_heading', 'coun_loc1'],
+                             output_keys=['cur_time', 'cur_pose', 'cur_loc', 'cur_heading', 'coun_loc1'])
+
+    def execute(self, userdata):
+
+        if long_goal:
+
+            twist_pub.publish(long_goal)
+            return 'moving'
+        else:
+            return 'arrived'
+
 
 class moving_AR(smach.State):
     global long_goal, twist_pub, found
 
     def __init__(self):
-        smach.State.__init__(self, outcomes=['moving', 'arrived', 'rotating'])
+        smach.State.__init__(self, outcomes=['arrived', 'rotating'],
+                             input_keys=['cur_time', 'cur_pose', 'cur_loc', 'cur_heading', 'coun_loc1'],
+                             output_keys=['cur_time', 'cur_pose', 'cur_loc', 'cur_heading', 'coun_loc1'])
 
     def execute(self, userdata):
-        global target_pose, found
+        global target_pose, found, loc4_task_id
 
-        # target_pose = get_goal_pose()
+        target_pose = self.get_goal_pose()
         if target_pose is None:
             found = False
             return 'rotating'
@@ -547,22 +628,45 @@ class moving_AR(smach.State):
             client.send_goal(target_pose)
             client.wait_for_result()
             target_pose = None
+            loc4_task_id = 2
+            ar_sub.unregister()
             return 'arrived'
 
+    def get_goal_pose(self):
+        listener = tf.TransformListener()
 
-class moving_unmarked(smach.State):
-    pass
+        mark_frame_id = '/item_' + str(current_id)
+        try:
+            listener.waitForTransform('/map', mark_frame_id, rospy.Time(), rospy.Duration(4.0))
+            (trans, rot) = listener.lookupTransform('/map', mark_frame_id, rospy.Time(0))
+        except:
 
+            return None
 
-class moving_shape(smach.State):
-    pass
+        euler = tf.transformations.euler_from_quaternion(rot)
+
+        new_rot = tf.transformations.quaternion_from_euler(0.0, 0.0, euler[2])
+
+        goal_pose = MoveBaseGoal()
+        goal_pose.target_pose.header.frame_id = '/map'
+        goal_pose.target_pose.pose.position.x = trans[0]
+        goal_pose.target_pose.pose.position.y = trans[1]
+        goal_pose.target_pose.pose.position.z = 0.0
+        goal_pose.target_pose.pose.orientation.x = 0.0
+        goal_pose.target_pose.pose.orientation.y = 0.0
+        goal_pose.target_pose.pose.orientation.z = new_rot[2]
+        goal_pose.target_pose.pose.orientation.w = new_rot[3]
+
+        return goal_pose
 
 
 class docking(smach.State):
     """docstring for docking"""
 
     def __init__(self):
-        smach.State.__init__(self, outcomes=['finished'])
+        smach.State.__init__(self, outcomes=['finished'],
+                             input_keys=['cur_time', 'cur_pose', 'cur_loc', 'cur_heading', 'coun_loc1'],
+                             output_keys=['cur_time', 'cur_pose', 'cur_loc', 'cur_heading', 'coun_loc1'])
 
     def execute(self, userdata):
         twist = Twist()
@@ -571,6 +675,115 @@ class docking(smach.State):
         twist_pub.publish(twist)
         rospy.sleep(3)
         return 'finished'
+
+
+class moving_unmarked(smach.State):
+    def __init__(self):
+        smach.State.__init__(self, outcomes=['arrived'],
+                             input_keys=['cur_time', 'cur_pose', 'cur_loc', 'cur_heading', 'coun_loc1'],
+                             output_keys=['cur_time', 'cur_pose', 'cur_loc', 'cur_heading', 'coun_loc1'])
+
+    def execute(self, userdata):
+        global loc4_task_id
+
+        # send waypoint by joysitck
+        while not unmarked_location:
+            print("waiting for location command.....")
+        client.send_goal(waypoints[unmarked_location])
+        client.wait_for_result()
+        loc4_task_id = 3
+
+        return 'arrived'
+
+
+class rotating_capture(smach.State):
+    global found, twist_pub
+
+    def __init__(self):
+        smach.State.__init__(self, outcomes=['found', 'not_found'],
+                             input_keys=['cur_time', 'cur_pose', 'cur_loc', 'cur_heading', 'coun_loc1'],
+                             output_keys=['cur_time', 'cur_pose', 'cur_loc', 'cur_heading', 'coun_loc1'])
+
+    def execute(self, userdata):
+        if long_goal:
+            twist = Twist()
+            twist_pub.publish(twist)
+            return 'found'
+        else:
+
+            if found:
+                twist = Twist()
+                twist_pub.publish(twist)
+
+                return 'found'
+
+            else:
+
+                twist = Twist()
+                twist.linear.x = 0
+                twist.angular.z = rotate_velocity
+                twist_pub.publish(twist)
+                return 'not_found'
+
+
+class shape_close(smach.State):
+    global found, twist_pub
+
+    def __init__(self):
+        smach.State.__init__(self, outcomes=['moving', 'stop'],
+                             input_keys=['cur_time', 'cur_pose', 'cur_loc', 'cur_heading', 'coun_loc1'],
+                             output_keys=['cur_time', 'cur_pose', 'cur_loc', 'cur_heading', 'coun_loc1'])
+
+    def execute(self, userdata):
+
+        if long_goal:
+            twist_pub.publish(long_goal)
+            return 'found'
+        else:
+
+            return 'stop'
+
+
+class moving_shape(smach.State):
+    def __init__(self):
+        smach.State.__init__(self, outcomes=['stop'],
+                             input_keys=['cur_time', 'cur_pose', 'cur_loc', 'cur_heading', 'coun_loc1'],
+                             output_keys=['cur_time', 'cur_pose', 'cur_loc', 'cur_heading', 'coun_loc1'])
+
+    def execute(self, userdata):
+        global target_pose, found, loc4_task_id, waypoints
+
+        l2_dist = numpy.linalg.norm(amcl_pose[0] - waypoints[0][0])
+        closest = 0
+        for i in range(1, 8):
+            if numpy.linalg.norm(amcl_pose[0] - waypoints[0][0]) < l2_dist:
+                closest = i
+                l2_dist = numpy.linalg.norm(amcl_pose[0] - waypoints[0][0])
+        target_pose = waypoints[closest]
+
+        client.send_goal(target_pose)
+        client.wait_for_result()
+        target_pose = None
+        loc4_task_id = 4
+        return 'stop'
+
+
+class back_loc3(smach.State):
+    def __init__(self):
+        smach.State.__init__(self, outcomes=['stop'],
+                             input_keys=['cur_time', 'cur_pose', 'cur_loc', 'cur_heading', 'coun_loc1'],
+                             output_keys=['cur_time', 'cur_pose', 'cur_loc', 'cur_heading', 'coun_loc1'])
+
+    def execute(self, userdata):
+        global location_index, stop_line_flag, flag_line_flag
+        client.send_goal(off_ramp_exit_pose)
+        client.wait_for_result()
+        location_index -= 1
+
+        stop_line_flag = False
+        flag_line_flag = False
+
+        return 'stop'
 
 
 # location 3 states
@@ -659,7 +872,7 @@ class moving_terminate(smach.State):
 
 class main_controller():
     def __init__(self):
-        global client
+        global client, ar_sub
         rospy.init_node('following_line')
 
         self.sm = smach.StateMachine(outcomes=['success'])
@@ -679,9 +892,12 @@ class main_controller():
 
         rospy.Subscriber('usb_cam/image_raw', Image, self.usb_image_callback)
         rospy.Subscriber('camera/rgb/image_raw', Image, self.kinect_image_callback)
+        ar_sub = rospy.Subscriber("ar_pose_marker", AlvarMarkers, self.ar_callback)
+        rospy.Subscriber("/joy", Joy, self.joy_callback)
+        rospy.Subscriber("/amcl_pose", PoseWithCovarianceStamped, self.amcl_callback)
 
-        # client = actionlib.SimpleActionClient('move_base', MoveBaseAction)
-        # client.wait_for_server()
+        client = actionlib.SimpleActionClient('move_base', MoveBaseAction)
+        client.wait_for_server()
 
         self.sm.userdata.current_time = rospy.Time.now()
         self.sm.userdata.current_pose = cur_pos
@@ -691,8 +907,88 @@ class main_controller():
         self.sm.userdata.stop_flag = stop_line_flag
         self.sm.userdata.flag_flag = flag_line_flag
 
+    def amcl_callback(self, msg):
+        global amcl_pose
+        amcl_pose = msg.pose
+
+    def joy_callback(self, msg):
+        global unmarked_location
+        while not unmarked_location:
+            rospy.sleep(1)
+
+        if (msg.buttons[0] == 1) and (msg.buttons[5] == 0):  # spot 1
+            unmarked_location = 0
+        elif (msg.buttons[1] == 1) and (msg.buttons[5] == 0):  # spot 2
+            unmarked_location = 1
+        elif (msg.buttons[2] == 1) and (msg.buttons[5] == 0):  # spot 3
+            unmarked_location = 2
+        elif (msg.buttons[3] == 1) and (msg.buttons[5] == 0):  # spot 4
+            unmarked_location = 3
+        elif (msg.buttons[0] == 1) and (msg.buttons[5] == 1):  # spot 5
+            unmarked_location = 4
+        elif (msg.buttons[1] == 1) and (msg.buttons[5] == 1):  # spot 6
+            unmarked_location = 5
+        elif (msg.buttons[2] == 1) and (msg.buttons[5] == 1):  # spot 7
+            unmarked_location = 6
+        elif (msg.buttons[3] == 1) and (msg.buttons[5] == 1):  # spot 8
+            unmarked_location = 7
+        else:
+            pass
+
+    def ar_callback(self, msg):
+        global found, twist_pub, long_goal, target_offset_y, target_offset_x
+
+        try:
+
+            for marker in msg.markers:
+
+                if int(marker.id) == current_id:
+                    rospy.loginfo("Target Found...")
+                    found = True
+                    target_offset_y = marker.pose.pose.position.y
+                    target_offset_x = marker.pose.pose.position.x
+                    break
+
+            if not found:
+                return
+
+        except:
+
+            if not found:
+                long_goal = None
+            else:
+                rospy.loginfo("Lost Target...")
+
+            return
+
+        twist = Twist()
+
+        if abs(target_offset_y) > y_threshold:
+            speed = target_offset_y * y_scale
+            twist.angular.z = copysign(max(min_angular_speed, min(max_angular_speed, abs(speed))), speed)
+        else:
+            twist.angular.z = 0
+
+        # if abs(target_offset_x - goal_x) > x_threshold:
+        #     speed = (target_offset_x - goal_x) * x_scale
+        #     if speed < 0:
+        #         speed *= 1.5
+        #     twist.linear.x = copysign(min(max_linear_speed, max(min_linear_speed, abs(speed))), speed)
+        # else:
+        #     twist.linear.x = 0.0
+        #     long_goal = None
+        #     return
+
+        twist.linear.x = 0.1
+
+        long_goal = twist
+
+        if target_offset_x < 1.0:
+            long_goal = None
+        return
+
     def kinect_image_callback(self, msg):
-        global stop_line_flag, flag_line_flag, counter_loc1, counter_loc2, object_type, backing_flag, current_type, max_linear_vel, time_after_stop
+        global stop_line_flag, flag_line_flag, counter_loc1, counter_loc2, object_type, backing_flag, current_type, max_linear_vel, time_after_stop, long_goal
         image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
         hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
@@ -777,12 +1073,41 @@ class main_controller():
 
                         if current_type == object_type:
                             break
+            elif location_index == 4 and loc4_task_id == 3:
+                # lower_green = numpy.array([65, 60, 60])
+                # upper_green = numpy.array([170, 256, 256])
+
+                red_mask = cv2.inRange(hsv, lower_red, upper_red)
+                im2, green_contours, hierarchy = cv2.findContours(red_mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+                for item in green_contours:
+                    if cv2.contourArea(item) > 100:
+                        peri = cv2.arcLength(item, True)
+                        approx = cv2.approxPolyDP(item, 0.04 * peri, True)
+                        if len(approx) == 3:
+                            current_type = TRIANGLE
+                        elif len(approx) == 4:
+                            current_type = RECTANGLE
+                        else:
+                            current_type = CIRCLE
+
+                        M = cv2.moments(red_mask)
+                        if current_type == object_type and M["m00"] > 0:
+                            cX = int(M["m10"] / M["m00"])
+                            cY = int(M["m01"] / M["m00"])
+                            cv2.circle(image, (cX, cY), 20, (0, 0, 255), -1)
+                            h, w, d = image.shape
+                            err = cX - w / 2
+                            temp_twist = Twist()
+                            temp_twist.linear.x = 0.2
+                            temp_twist.angular.z = -float(err) / 100
+                            long_goal = temp_twist
             else:
                 pass
 
-        red_mask = cv2.inRange(hsv, lower_red, upper_red)
-        cv2.imshow("refer", red_mask)
-        cv2.waitKey(3)
+        # red_mask = cv2.inRange(hsv, lower_red, upper_red)
+        # cv2.imshow("refer", red_mask)
+        # cv2.waitKey(3)
 
     def usb_image_callback(self, msg):
         global stop_line_flag, flag_line_flag, counter_loc1, counter_loc2, object_type, backing_flag, current_type, max_linear_vel, time_after_stop, is_end_of_line
@@ -1041,14 +1366,101 @@ class main_controller():
             # location 4
 
             smach.StateMachine.add('moving_on_line', moving_on_line(),
-                                   transitions={'stop': 'success',
-                                                'moving': 'moving_on_line'},
+                                   transitions={'stop': 'moving_center'},
                                    remapping={'cur_time': 'current_time',
                                               'cur_pose': 'current_pose',
                                               'cur_loc': 'current_loc',
                                               'cur_heading': 'current_heading',
                                               'stop_flag': 'stop_line_flag',
                                               'flag_flag': 'flag_line_flag'})
+
+            smach.StateMachine.add('moving_center', moving_center(),
+                                   transitions={'to_task1': 'rotate_check',
+                                                'to_task2': 'moving_unmarked',
+                                                'to_task3': 'rotating_capture',
+                                                'back': 'back_loc3'},
+                                   remapping={'cur_time': 'current_time',
+                                              'cur_pose': 'current_pose',
+                                              'cur_loc': 'current_loc',
+                                              'cur_heading': 'current_heading',
+                                              'coun_loc1': 'counter_loc1'})
+
+            smach.StateMachine.add('rotate_check', rotate_check(),
+                                   transitions={'found': 'rough_close',
+                                                'not_found': 'rotate_check'},
+                                   remapping={'cur_time': 'current_time',
+                                              'cur_pose': 'current_pose',
+                                              'cur_loc': 'current_loc',
+                                              'cur_heading': 'current_heading',
+                                              'coun_loc1': 'counter_loc1'})
+
+            smach.StateMachine.add('rough_close', rough_close(),
+                                   transitions={'moving': 'rough_close',
+                                                'arrived': 'moving_AR'},
+                                   remapping={'cur_time': 'current_time',
+                                              'cur_pose': 'current_pose',
+                                              'cur_loc': 'current_loc',
+                                              'cur_heading': 'current_heading',
+                                              'coun_loc1': 'counter_loc1'})
+
+            smach.StateMachine.add('moving_AR', moving_AR(),
+                                   transitions={'rotating': 'rotate_check',
+                                                'arrived': 'docking'},
+                                   remapping={'cur_time': 'current_time',
+                                              'cur_pose': 'current_pose',
+                                              'cur_loc': 'current_loc',
+                                              'cur_heading': 'current_heading',
+                                              'coun_loc1': 'counter_loc1'})
+
+            smach.StateMachine.add('docking', docking(),
+                                   transitions={'finished': 'moving_center'},
+                                   remapping={'cur_time': 'current_time',
+                                              'cur_pose': 'current_pose',
+                                              'cur_loc': 'current_loc',
+                                              'cur_heading': 'current_heading',
+                                              'coun_loc1': 'counter_loc1'})
+
+            smach.StateMachine.add('moving_unmarked', moving_unmarked(),
+                                   transitions={'arrived': 'docking'},
+                                   remapping={'cur_time': 'current_time',
+                                              'cur_pose': 'current_pose',
+                                              'cur_loc': 'current_loc',
+                                              'cur_heading': 'current_heading',
+                                              'coun_loc1': 'counter_loc1'})
+
+            smach.StateMachine.add('rotating_capture', rotating_capture(),
+                                   transitions={'found': 'shape_close',
+                                                'not_found': 'rotating_capture'},
+                                   remapping={'cur_time': 'current_time',
+                                              'cur_pose': 'current_pose',
+                                              'cur_loc': 'current_loc',
+                                              'cur_heading': 'current_heading',
+                                              'coun_loc1': 'counter_loc1'})
+
+            smach.StateMachine.add('shape_close', shape_close(),
+                                   transitions={'moving': 'shape_close',
+                                                'stop': 'moving_shape'},
+                                   remapping={'cur_time': 'current_time',
+                                              'cur_pose': 'current_pose',
+                                              'cur_loc': 'current_loc',
+                                              'cur_heading': 'current_heading',
+                                              'coun_loc1': 'counter_loc1'})
+
+            smach.StateMachine.add('moving_shape', moving_shape(),
+                                   transitions={'stop': 'docking'},
+                                   remapping={'cur_time': 'current_time',
+                                              'cur_pose': 'current_pose',
+                                              'cur_loc': 'current_loc',
+                                              'cur_heading': 'current_heading',
+                                              'coun_loc1': 'counter_loc1'})
+
+            smach.StateMachine.add('back_loc3', back_loc3(),
+                                   transitions={'stop': 'moving_forward'},
+                                   remapping={'cur_time': 'current_time',
+                                              'cur_pose': 'current_pose',
+                                              'cur_loc': 'current_loc',
+                                              'cur_heading': 'current_heading',
+                                              'coun_loc1': 'counter_loc1'})
 
             # location 3
 
