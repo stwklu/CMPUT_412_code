@@ -1,0 +1,58 @@
+<launch>
+  <arg name="3d_sensor" default="$(env TURTLEBOT_3D_SENSOR)"/>
+  <arg name="scan_topic"  default="scan" />
+  <arg name="base_frame"  default="base_footprint"/>
+  <arg name="odom_frame"  default="odom"/>
+  
+  <include file="$(find turtlebot_bringup)/launch/minimal.launch"/>
+
+  <include file="$(find turtlebot_bringup)/launch/3dsensor.launch"/>
+
+  <include file="$(find turtlebot_teleop)/launch/logitech.launch"/>
+
+  <include file="$(find usb_cam)/launch/usb_cam-test.launch"/>
+
+  <!-- Move base -->
+  <arg name="custom_param_file" default="$(find turtlebot_navigation)/param/$(arg 3d_sensor)_costmap_params.yaml"/>
+  <include file="$(find turtlebot_navigation)/launch/includes/move_base.launch.xml">
+    <arg name="custom_param_file" value="$(arg custom_param_file)"/>
+  </include>
+
+
+
+  <!-- AMCL -->
+  <arg name="custom_amcl_launch_file" default="$(find turtlebot_navigation)/launch/includes/amcl/amcl.launch.xml"/>
+  
+
+  <arg name="initial_pose_x" default="0.0"/> <!-- Use 17.0 for willow's map in simulation -->
+  <arg name="initial_pose_y" default="0.0"/> <!-- Use 17.0 for willow's map in simulation -->
+  <arg name="initial_pose_a" default="0.0"/>
+  <include file="$(arg custom_amcl_launch_file)">
+    <!--<arg name="initial_pose_x" value="$(arg initial_pose_x)"/>
+    <arg name="initial_pose_y" value="$(arg initial_pose_y)"/>
+    <arg name="initial_pose_a" value="$(arg initial_pose_a)"/>
+    
+    <param name="initial_pose_x" value="$(arg initial_pose_x)"/>
+    <param name="initial_pose_y" value="$(arg initial_pose_y)"/>
+    <param name="initial_pose_a" value="$(arg initial_pose_a)"/>-->
+
+  </include>
+
+
+  
+
+
+  <node pkg="comp_three" type="simple.py" name="following_line" output="screen"/>
+  <arg name="tag_trans" default="0 -0.2 0 0 0 0"/>
+  <arg name="tag_rot" default="0 0 0 0 0 -1.57"/>
+
+  <node pkg="tf" type="static_transform_publisher" name="ar_2_up" args="$(arg tag_rot) ar_marker_2 ar_2_up 100"/>
+  <node pkg="tf" type="static_transform_publisher" name="ar_3_up" args="$(arg tag_rot) ar_marker_3 ar_3_up 100"/>
+  <node pkg="tf" type="static_transform_publisher" name="ar_4_up" args="$(arg tag_rot) ar_marker_4 ar_4_up 100"/>
+
+
+  <node pkg="tf" type="static_transform_publisher" name="item_2" args="$(arg tag_trans) ar_2_up item_2 100"/>
+  <node pkg="tf" type="static_transform_publisher" name="item_3" args="$(arg tag_trans) ar_3_up item_3 100"/>
+  <node pkg="tf" type="static_transform_publisher" name="item_4" args="$(arg tag_trans) ar_4_up item_4 100"/>
+
+</launch>
