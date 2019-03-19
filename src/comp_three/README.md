@@ -9,21 +9,38 @@ The robot will be initially place in full stop at the first stop line.
 The robot stays on the line while looping around the track.
 There are four stop lines, once the robot has done a full loop and reach the start stop line the run is done.
 There are 4 locations for specific tasks.
-![](course.png)
-![](course_real.png)
+
+<p align="center">
+ <img src="doc/course.png" width="200" height="200">
+</p>
+
 * Location 1 is marked by a short red line adjacent to the track, the robot a number of objects (one, two, or three) at this location, and signal with LEDs(same as number of objects counted), and beep for the same number of time.
-![](marker.png)
-![](location_1.png)
+
+<p align="center">
+ <img src="doc/marker.png" width="200" height="200">
+ <img src="doc/location_1.png" width="200" height="200">
+</p>
+
 * Location 2 is down a detour, marked by a red line adjacent to the track, the robot will count the number of objects (one, two, or three), and signal with LEDs(same as number of objects counted), and beep for the same number of time.
 Only one of the objects will appear in green color, the robot will memorize the shape of this object.
-![](location_2.png)
+
+<p align="center">
+ <img src="doc/location_2.png" width="200" height="200">
+</p>
+
 * Location 3 has three separate red line markers, one for each shape (square, circle, triangle). The robot will look for the same shape it memorized from the green object at location 2, and signal with LED and beep sound indicating the match.
-![](location_3_1.png)
-![](location_3_2.png)
-![](location_3_3.png)
+
+<p align="center">
+ <img src="doc/location_3_1.png" width="200" height="200">
+ <img src="doc/location_3_2.png" width="200" height="200">
+ <img src="doc/location_3_3.png" width="200" height="200">
+</p>
+
 * Location 4 is off-ramp a "parking lot".
 
-![](header.png =250x250)
+<p align="center">
+ <img src="doc/header.png" width="200" height="200">
+</p>
 
 ## Prerequisite
 - This project is developed and tested under [Ubuntu 16.4](https://www.ubuntu.com/download/alternative-downloads) and [ROS Kinetic](http://wiki.ros.org/kinetic) platform.
