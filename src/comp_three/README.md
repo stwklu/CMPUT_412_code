@@ -118,7 +118,7 @@ The state machine governing the execution of the whole task is constituted by an
   * `moving_after_stop` : Moving forward for 2 seconds.
 To show the state machine graphically
 <p align="center">
- <img src="doc/smach.png" width="600" height="600">
+ <img src="doc/smach.png" width="1000" height="1000">
 </p>
 
 ### Vision system
