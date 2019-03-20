@@ -1,4 +1,4 @@
-# line-following and object counting robot
+# line-following robot
 * This project is intended for competition #3 in CMPUT 412 at University of Alberta. All rights reserved.
 
 ## Purpose
