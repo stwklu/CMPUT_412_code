@@ -36,7 +36,7 @@ Only one of the objects will appear in green color, the robot will memorize the 
  <img src="doc/location_3_3.png" width="200" height="200">
 </p>
 
-* Location 4 is off-ramp a "parking lot".
+* Location 4 is off-ramp a "parking lot". The robot will complete three tasks in this location. First, docking in front of a random AR tag; Second, docking in a random square set by joy sticks; Third, docking in front of the same shape that it memorized from the green object at location 2.
 
 <p align="center">
  <img src="doc/header.png" width="200" height="200">
