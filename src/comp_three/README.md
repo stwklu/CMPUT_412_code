@@ -122,7 +122,7 @@ The state machine governing the execution of the whole task is constituted by an
   * `moving_back_loc2` & `finish_loc2` : In this state, the turtlebot exit the path and go back to the main route.
   * `checking_object_loc3` : In this state, the turtlebot check the geometric primitives on the left hand side of the route by order, and signal when the target observed at location 2 is presented.
 
-* **7 utility states**. These states only execute basic robot movements that needed for bridging task states.
+* **15 utility states**. These states only execute basic robot movements that needed for bridging task states.
   * `turning_back` : Turn the turtlebot by 90 degree from clockwise.
   * `turning_left` : Turn the turtlebot by 90 degree counter-clockwise.
   * `right_turning_back` : Turn the turtlebot by 90 degree clockwise.
