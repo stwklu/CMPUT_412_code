@@ -99,6 +99,16 @@ The following parameters in the `comp_3.launch`:
 * `initial_pose_y: 0.0` : y of initial pose.
 * `initial_pose_a: 0.0` : a of initial pose.
 
+Several external launch file and node in `comp_3.launch`:
+* `turtlebot_bringup/launch/minimal.launch` : bring up the turtlebot.
+* `turtlebot_bringup/launch/3dsensor.launch` : bring up the sensors.
+* `turtlebot_teleop/launch/logitech.launch` : connect to the joy stick.
+* `usb_cam/launch/usb_cam-test.launch` : connect to the usb camera.
+* `comp_three/launch/capture_tags.launch` : bring up AR tag detector.
+* `turtlebot_navigation/launch/includes/amcl/amcl.launch.xml` : bring up amcl.
+* `turtlebot_navigation/launch/includes/move_base.launch.xml` : bring up move base.
+* `tf/static_transform_publisher` : move the pose of AR tag.
+* `turtlebot_stage/rviz/robot_navigation.rviz` : launch rviz.
 
 ### State machine
 The state machine governing the execution of the whole task is constituted by and 
@@ -117,6 +127,15 @@ The state machine governing the execution of the whole task is constituted by an
   * `back_dirction` : Turn the turtlebot by 180 degree from clockwise.
   * `stop` : Stop all robot movements.
   * `moving_after_stop` : Moving forward for 2 seconds.
+  
+  * `moving_on_line` : Stay on the line before location 4.
+  * `moving_center` : Move toward the center of location 4.
+  * `moving_unmarked` : Move toward a random unmarked square.
+  * `rotate_check` : Detect the AR tag and rotate.
+  * `rotate_capture` : Detect the matched shape and rotate.
+  * `moving_AR` : Move toward the AR tag.
+  * `moving_shape` : Moving toward the matched shape.
+  * `docking` : Dock in the sqaure for 3 seconds.
 To show the state machine graphically
 <p align="center">
  <img src="doc/smach.png" width="1000" height="850">
