@@ -117,7 +117,9 @@ The state machine governing the execution of the whole task is constituted by an
   * `stop` : Stop all robot movements.
   * `moving_after_stop` : Moving forward for 2 seconds.
 To show the state machine graphically
-![](rqt_graph.png)
+<p align="center">
+ <img src="doc/smach.png" width="400" height="400">
+</p>
 
 ### Vision system
 Vision sensor and image processing from [OpenCv](https://opencv.org/) package are mainly used for the following:
