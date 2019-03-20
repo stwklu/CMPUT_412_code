@@ -1,4 +1,4 @@
-# line-following robot
+# Parking with GMapping, AMCL and ARTags
 * This project is intended for competition #3 in CMPUT 412 at University of Alberta. All rights reserved.
 
 ## Purpose
@@ -47,6 +47,9 @@ Only one of the objects will appear in green color, the robot will memorize the 
 - This project is to be executed on [kobuki turtlebot](https://www.turtlebot.com/turtlebot2/).
 - [openni2 camera](http://wiki.ros.org/openni_camera) and [launch](http://wiki.ros.org/openni2_launch) packages.
 - [OpenCv](http://wiki.ros.org/vision_opencv) package should be installed.
+- [Gmapping](http://wiki.ros.org/Gmapping) package was used when building the map, but not required during competition run.
+- [AMCL](http://wiki.ros.org/Gmapping) package should be installed.
+- [ar_tag_alvar](http://wiki.ros.org/Gmapping) package should be installed.
 
 ## Installation
 Open a terminal and type the following bash commands in order
@@ -142,14 +145,25 @@ To show the state machine graphically
 </p>
 
 ### Vision system
-Vision sensor and image processing from [OpenCv](https://opencv.org/) package are mainly used for the following:
+Vision sensor and image processing from [OpenCv](http://wiki.ros.org/vision_opencv) package are mainly used for the following:
 * Identify lines
   * Images from front camera are filtered to only passing white color. We use the image moment to compute forward direction via a PID controller, to stay on the route.
 * Detecting and recognizing basic geometric primitives
   1. Find Contours in the image.
   2. Approximate each contour using OpenCv `approxPolyDP` function.
   3. Check number of elements in the approximated contours, determine the shape.
+* Calculate image error
+  * Used for the PID controller of velocity command.
+  
+### Mapping
+* [Gmapping](http://wiki.ros.org/Gmapping) package was used when building the map.
 
+### Localization
+* [AMCL](http://wiki.ros.org/Gmapping) package was used to localize on map.
+
+### Navigation
+* [ar_tag_alvar](http://wiki.ros.org/Gmapping) package is used to estimate the relative pose of AR-tags.
+* A PID controller is used to convert image error to robot velocity command, in competition 4 shape parking.
 
 ## Contributing
 
