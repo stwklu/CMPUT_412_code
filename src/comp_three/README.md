@@ -75,29 +75,30 @@ In the first terminal, invoke roscore
 ```sh
 roscore
 ```
-In the second terminal, bring up the [turtlebot](https://www.turtlebot.com/turtlebot2/)
+In the second terminal, send the map file
 ```sh
-roslaunch turtlebot_bringup minimal.launch
+rosrun map_server map_server new.yaml
 ```
-In the third terminal, bring up the sensors
-```sh
-roslaunch turtlebot_bringup 3dsensor.launch
-```
-Now you should have the turtlebot activated.
-
 Open another terminal, launch the package. Make sure the source the setup script before as above
 ```sh
-roslaunch line_follow_count line_follow_count.launch
+roslaunch comp_three comp_3.launch
 ```
 
 ## Concept & Code
 ### launch file & parameters
-The following parameters in the `line_follow_count.launch`:
-* `max_rotate_vel: 0.5` : The maximum rotation velocity command being sent
-* `max_linear_vel: 0.25` : The maximum linear velocity command being sent
-* `degree_ninty: 2.0` : The radian degree to turned when turning turning the robot by 90 degree. Note this value is slightly higher than pi/2 due to robot mechanic errors.
-* `loc3_stop_time: 2` : waiting time at location 3
-* `time_after_stop: 2` : minimum time to go foward after stop. This prevent the robot re-identifying line stops.
+The following parameters in the `capture_tags.launch`:
+* `marker_size: 19.9` : The width in centimeters of one side of the black square that makes up a marker.
+* `max_new_marker_error: 0.08` :  A threshold determining when new markers can be detected under uncertainty. 
+* `max_track_error: 0.2` : The width in centimeters of one side of the black square that makes up a marker.
+* `output_frame: "/base_link"` : The name of the frame that the published Cartesian locations of the AR tags will be relative to. 
+* `camera_image: "/camera/depth_registered/points"` : The name of the topic that provides camera frames for detecting the AR tags. This can be mono or color, but should be an UNrectified image, since rectification takes place in this package. 
+* `camera_info: "/camera/rgb/camera_info"` : The name of the topic that provides the camera calibration parameters so that the image can be rectified.
+
+The following parameters in the `comp_3.launch`:
+* `initial_pose_x: 0.0` : x of initial pose.
+* `initial_pose_y: 0.0` : y of initial pose.
+* `initial_pose_a: 0.0` : a of initial pose.
+
 
 ### State machine
 The state machine governing the execution of the whole task is constituted by and 
@@ -118,7 +119,7 @@ The state machine governing the execution of the whole task is constituted by an
   * `moving_after_stop` : Moving forward for 2 seconds.
 To show the state machine graphically
 <p align="center">
- <img src="doc/smach.png" width="1000" height="1000">
+ <img src="doc/smach.png" width="1000" height="850">
 </p>
 
 ### Vision system
