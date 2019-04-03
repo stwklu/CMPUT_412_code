@@ -1,0 +1,69 @@
+<launch>
+    <include file="$(find turtlebot_navigation)/launch/includes/velocity_smoother.launch.xml"/>
+    <include file="$(find turtlebot_navigation)/launch/includes/safety_controller.launch.xml"/>
+
+
+    <include file="$(find turtlebot_bringup)/launch/minimal.launch"/>
+
+    <include file="$(find turtlebot_bringup)/launch/3dsensor.launch"/>
+
+    <include file="$(find turtlebot_teleop)/launch/logitech.launch"/>
+
+    <include file="$(find comp4)/launch/capture_tags.launch"/>
+
+    <arg name="odom_frame_id" default="odom"/>
+    <arg name="base_frame_id" default="base_footprint"/>
+    <arg name="global_frame_id" default="odom"/>
+    <arg name="odom_topic" default="odom"/>
+    <arg name="laser_topic" default="scan"/>
+    <arg name="custom_param_file" default="$(find turtlebot_navigation)/param/dummy.yaml"/>
+
+
+    <node pkg="move_base" type="move_base" respawn="false" name="move_base" output="screen">
+
+        <rosparam file="$(find comp4)/param/odom_nav_params/costmap_common_params.yaml" command="load"
+                  ns="global_costmap"/>
+        <rosparam file="$(find comp4)/param/odom_nav_params/costmap_common_params.yaml" command="load"
+                  ns="local_costmap"/>
+
+        <rosparam file="$(find comp4)/param/odom_nav_params/global_costmap_params.yaml" command="load"/>
+        <rosparam file="$(find comp4)/param/odom_nav_params/local_costmap_params.yaml" command="load"/>
+
+        <!-- <rosparam file="$(find turtlebot_navigation)/param/odom_nav_params/base_local_planner_params.yaml" command="load" /> -->
+        <rosparam file="$(find comp4)/param/odom_nav_params/dwa_local_planner_params.yaml" command="load"/>
+        <rosparam file="$(find comp4)/param/odom_nav_params/move_base_params.yaml" command="load"/>
+
+        <param name="base_global_planner" type="string" value="navfn/NavfnROS"/>
+        <!-- <param name="base_local_planner" value="base_local_planner/TrajectoryPlannerROS"/> -->
+        <param name="base_local_planner" value="dwa_local_planner/DWAPlannerROS"/>
+
+
+        <remap from="cmd_vel" to="navigation_velocity_smoother/raw_cmd_vel"/>
+        <remap from="odom" to="$(arg odom_topic)"/>
+        <remap from="scan" to="$(arg laser_topic)"/>
+
+    </node>
+
+    <node pkg="comp4" type="comp4.py" name="comp4" output="screen"/>
+
+
+    <arg name="tag_trans" default="0 0 0.2 0 0 0"/>
+    <arg name="tag_back" default="0 0 -0.5 0 0 0"/>
+
+
+    <node pkg="tf" type="static_transform_publisher" name="target_1" args="$(arg tag_trans) ar_marker_1 target_1 100"/>
+    <node pkg="tf" type="static_transform_publisher" name="target_2" args="$(arg tag_trans) ar_marker_2 target_2 100"/>
+    <node pkg="tf" type="static_transform_publisher" name="target_3" args="$(arg tag_trans) ar_marker_3 target_3 100"/>
+    <node pkg="tf" type="static_transform_publisher" name="target_4" args="$(arg tag_trans) ar_marker_4 target_4 100"/>
+
+
+    <node pkg="tf" type="static_transform_publisher" name="back_1" args="$(arg tag_back) ar_marker_1 back_1 100"/>
+    <node pkg="tf" type="static_transform_publisher" name="back_2" args="$(arg tag_back) ar_marker_2 back_2 100"/>
+    <node pkg="tf" type="static_transform_publisher" name="back_3" args="$(arg tag_back) ar_marker_3 back_3 100"/>
+    <node pkg="tf" type="static_transform_publisher" name="back_4" args="$(arg tag_back) ar_marker_4 back_4 100"/>
+
+
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find turtlebot_stage)/rviz/robot_navigation.rviz"/>
+
+
+</launch>
