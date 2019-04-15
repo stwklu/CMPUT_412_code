@@ -39,8 +39,10 @@ Only one of the objects will appear in green color, the robot will memorize the 
 * Location 4 is off-ramp a "parking lot". The robot will complete three tasks in this location. First, detecting the pose of a AR tag attached above a specific sqaure, and regarding the square as the target; Second, detecting the AR tag on the box and pushing the box to the target square; Third, docking in front of the same shape that it memorized from the green object at location 2.
 
 <p align="center">
- <img src="doc/location_4_1.jpg" width="200" height="200">
- <img src="doc/location_4_2.jpg" width="200" height="200">
+ <img src="doc/loc4_2.jpg" width="200" height="200">
+ <img src="doc/loc4_3.jpg" width="200" height="200">
+ <img src="doc/loc4_4.jpg" width="200" height="200">
+ <img src="doc/loc4_5.jpg" width="200" height="200">
 </p>
 
 ## Prerequisite
