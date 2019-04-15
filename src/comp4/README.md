@@ -112,7 +112,7 @@ Several external launch file and node in `comp4.launch`:
 
 ### State machine
 The state machine governing the execution of the whole task is constituted by and 
-* **5 task states**. These states are used specifically for sequential sub-tasks, which involve counting objects, and identify shapes.
+* **10 task states**. These states are used specifically for sequential sub-tasks, which involve counting objects, and identify shapes.
   * `moving_foward` : Moving forward until line stops. Task orders are managed by global flags.
   * `checking_object_loc1` : In this state the turtlebot counts the number of red objects/segments in vision. LED signial will indicate the number of objects counted.
   * `moving_loc2` : In this state, the robot would go into the path indicated by line stop, and count the number of geometric primitives presented at the end of line. The green geometric primitive is recorded as target.
@@ -124,7 +124,7 @@ The state machine governing the execution of the whole task is constituted by an
   * `goto_shape` : In this state, the turtlebot move toward the matched shape and dock for a while.
   * `on_ramp` : In this state, the turtlebot move back to the line and work on the task of location 3.
 
-* **15 utility states**. These states only execute basic robot movements that needed for bridging task states.
+* **7 utility states**. These states only execute basic robot movements that needed for bridging task states.
   * `turning_back` : Turn the turtlebot by 90 degree from clockwise.
   * `turning_left` : Turn the turtlebot by 90 degree counter-clockwise.
   * `right_turning_back` : Turn the turtlebot by 90 degree clockwise.
@@ -132,15 +132,7 @@ The state machine governing the execution of the whole task is constituted by an
   * `back_dirction` : Turn the turtlebot by 180 degree from clockwise.
   * `stop` : Stop all robot movements.
   * `moving_after_stop` : Moving forward for 2 seconds.
-  
-  * `moving_on_line` : Stay on the line before location 4.
-  * `moving_center` : Move toward the center of location 4.
-  * `moving_unmarked` : Move toward a random unmarked square.
-  * `rotate_check` : Detect the AR tag and rotate.
-  * `rotate_capture` : Detect the matched shape and rotate.
-  * `moving_AR` : Move toward the AR tag.
-  * `moving_shape` : Moving toward the matched shape.
-  * `docking` : Dock in the sqaure for 3 seconds.
+
 To show the state machine graphically
 <p align="center">
  <img src="doc/smach.png" width="1000" height="850">
@@ -157,11 +149,6 @@ Vision sensor and image processing from [OpenCv](http://wiki.ros.org/vision_open
 * Calculate image error
   * Used for the PID controller of velocity command.
   
-### Mapping
-* [Gmapping](http://wiki.ros.org/Gmapping) package was used when building the map.
-
-### Localization
-* [AMCL](http://wiki.ros.org/Gmapping) package was used to localize on map.
 
 ### Navigation
 * [ar_tag_alvar](http://wiki.ros.org/Gmapping) package is used to estimate the relative pose of AR-tags.
