@@ -1,4 +1,4 @@
-# Parking with GMapping, AMCL and ARTags
+# Robot Parking and Line-following with vision
 * This project is intended for competition #4 and #5 in CMPUT 412 at University of Alberta. All rights reserved.
 
 ## Purpose
@@ -36,7 +36,7 @@ Only one of the objects will appear in green color, the robot will memorize the 
  <img src="doc/location_3_3.png" width="200" height="200">
 </p>
 
-* Location 4 is off-ramp a "parking lot". The robot will complete three tasks in this location. First, detecting the pose of a AR tag attached above a specific sqaure, and regarding the square as the target; Second, detecting the AR tag on the box and pushing the box to the target square; Third, docking in front of the same shape that it memorized from the green object at location 2.
+* Location 4 is off-ramp a "parking lot". The robot will complete three tasks in this location. First, detecting the pose of a AR tag attached above a specific sqaure, and regarding the square as the target; Second, detecting the AR tag on the box and pushing the box to the target square; Third, docking in front of the same shape that it memorized from the green object at location 2. **Note:** The box-pushing is currently under instruction.
 
 <p align="center">
  <img src="doc/loc4_2.jpeg" width="200" height="200">
@@ -135,7 +135,7 @@ The state machine governing the execution of the whole task is constituted by an
 
 To show the state machine graphically
 <p align="center">
- <img src="doc/smach.png" width="1000" height="850">
+ <img src="doc/rqt.png" width="1000" height="500">
 </p>
 
 ### Vision system
