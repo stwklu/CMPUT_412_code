@@ -1,0 +1,9 @@
+<launch>
+
+	<include file="$(find turtlebot_bringup)/launch/3dsensor.launch"/>
+
+	<include file="$(find turtlebot_bringup)/launch/minimal.launch"/>
+
+	<node pkg="comp4" type="shape_test.py" name="shape_test" output="screen"/>
+
+</launch>

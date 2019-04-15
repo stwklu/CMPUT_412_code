@@ -1,0 +1,6 @@
+<launch>
+    <include file="$(find turtlebot_bringup)/launch/minimal.launch"/>
+
+    <node name="comp4" pkg="comp4" type="test.py" output="screen"/>
+
+</launch>
