@@ -53,6 +53,7 @@ Only one of the objects will appear in green color, the robot will memorize the 
 - [Gmapping](http://wiki.ros.org/Gmapping) package was used when building the map, but not required during competition run.
 - [AMCL](http://wiki.ros.org/Gmapping) package should be installed.
 - [ar_tag_alvar](http://wiki.ros.org/Gmapping) package should be installed.
+- [usb_cam](http://wiki.ros.org/usb_cam) package should be installed.
 
 ## Installation
 Open a terminal and type the following bash commands in order
@@ -81,13 +82,9 @@ In the first terminal, invoke roscore
 ```sh
 roscore
 ```
-In the second terminal, send the map file
-```sh
-rosrun map_server map_server new.yaml
-```
 Open another terminal, launch the package. Make sure the source the setup script before as above
 ```sh
-roslaunch comp_three comp_3.launch
+roslaunch comp4 comp4.launch
 ```
 
 ## Concept & Code
