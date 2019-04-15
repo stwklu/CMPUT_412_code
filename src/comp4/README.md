@@ -1,5 +1,5 @@
 # Parking with GMapping, AMCL and ARTags
-* This project is intended for competition #3 in CMPUT 412 at University of Alberta. All rights reserved.
+* This project is intended for competition #4 and #5 in CMPUT 412 at University of Alberta. All rights reserved.
 
 ## Purpose
 This project is a warehouse robot prototype using vision signal.
@@ -11,7 +11,7 @@ There are four stop lines, once the robot has done a full loop and reach the sta
 There are 4 locations for specific tasks.
 
 <p align="center">
- <img src="doc/course.png" width="200" height="200">
+ <img src="doc/course_new.png" width="200" height="200">
 </p>
 
 * Location 1 is marked by a short red line adjacent to the track, the robot a number of objects (one, two, or three) at this location, and signal with LEDs(same as number of objects counted), and beep for the same number of time.
@@ -36,7 +36,7 @@ Only one of the objects will appear in green color, the robot will memorize the 
  <img src="doc/location_3_3.png" width="200" height="200">
 </p>
 
-* Location 4 is off-ramp a "parking lot". The robot will complete three tasks in this location. First, docking in front of a random AR tag; Second, docking in a random square set by joy sticks; Third, docking in front of the same shape that it memorized from the green object at location 2.
+* Location 4 is off-ramp a "parking lot". The robot will complete three tasks in this location. First, detecting the pose of a AR tag attached above a specific sqaure, and regarding the square as the target; Second, detecting the AR tag on the box and pushing the box to the target square; Third, docking in front of the same shape that it memorized from the green object at location 2.
 
 <p align="center">
  <img src="doc/location_4_1.jpg" width="200" height="200">
