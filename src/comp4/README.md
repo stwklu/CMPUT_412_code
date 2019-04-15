@@ -97,11 +97,6 @@ The following parameters in the `capture_tags.launch`:
 * `camera_image: "/camera/depth_registered/points"` : The name of the topic that provides camera frames for detecting the AR tags. This can be mono or color, but should be an UNrectified image, since rectification takes place in this package. 
 * `camera_info: "/camera/rgb/camera_info"` : The name of the topic that provides the camera calibration parameters so that the image can be rectified.
 
-The following parameters in the `comp4.launch`:
-* `initial_pose_x: 0.0` : x of initial pose.
-* `initial_pose_y: 0.0` : y of initial pose.
-* `initial_pose_a: 0.0` : a of initial pose.
-
 Several external launch file and node in `comp4.launch`:
 * `turtlebot_bringup/launch/minimal.launch` : bring up the turtlebot.
 * `turtlebot_bringup/launch/3dsensor.launch` : bring up the sensors.
