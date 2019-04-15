@@ -97,21 +97,23 @@ The following parameters in the `capture_tags.launch`:
 * `camera_image: "/camera/depth_registered/points"` : The name of the topic that provides camera frames for detecting the AR tags. This can be mono or color, but should be an UNrectified image, since rectification takes place in this package. 
 * `camera_info: "/camera/rgb/camera_info"` : The name of the topic that provides the camera calibration parameters so that the image can be rectified.
 
-The following parameters in the `comp_3.launch`:
+The following parameters in the `comp4.launch`:
 * `initial_pose_x: 0.0` : x of initial pose.
 * `initial_pose_y: 0.0` : y of initial pose.
 * `initial_pose_a: 0.0` : a of initial pose.
 
-Several external launch file and node in `comp_3.launch`:
+Several external launch file and node in `comp4.launch`:
 * `turtlebot_bringup/launch/minimal.launch` : bring up the turtlebot.
 * `turtlebot_bringup/launch/3dsensor.launch` : bring up the sensors.
 * `turtlebot_teleop/launch/logitech.launch` : connect to the joy stick.
 * `usb_cam/launch/usb_cam-test.launch` : connect to the usb camera.
 * `comp_three/launch/capture_tags.launch` : bring up AR tag detector.
-* `turtlebot_navigation/launch/includes/amcl/amcl.launch.xml` : bring up amcl.
 * `turtlebot_navigation/launch/includes/move_base.launch.xml` : bring up move base.
 * `tf/static_transform_publisher` : move the pose of AR tag.
-* `turtlebot_stage/rviz/robot_navigation.rviz` : launch rviz.
+
+   The following parameters in the `tf/static_transform_publisher`:
+   * `tag_trans: 0 0 0.4 0 0 0` : move forward the pose of the AR tag 40 cm.
+   * `tag_back: 0 0 -0.5 0 0 0` : move backward the pose of the AR tag 50 cm.
 
 ### State machine
 The state machine governing the execution of the whole task is constituted by and 
