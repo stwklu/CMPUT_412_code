@@ -118,6 +118,11 @@ The state machine governing the execution of the whole task is constituted by an
   * `moving_loc2` : In this state, the robot would go into the path indicated by line stop, and count the number of geometric primitives presented at the end of line. The green geometric primitive is recorded as target.
   * `moving_back_loc2` & `finish_loc2` : In this state, the turtlebot exit the path and go back to the main route.
   * `checking_object_loc3` : In this state, the turtlebot check the geometric primitives on the left hand side of the route by order, and signal when the target observed at location 2 is presented.
+  * `initial_docking_loc4` : In this state, the turtlebot move to the center of the location 4 and wait for detection.
+  * `detect_target_pose` : In this state, the turtlebot detect the pose of AR tag above the square and the pose of AR tag on the box.
+  * `rotating_shape` : In this state, the turtlebot rotate and detect the matched shape.
+  * `goto_shape` : In this state, the turtlebot move toward the matched shape and dock for a while.
+  * `on_ramp` : In this state, the turtlebot move back to the line and work on the task of location 3.
 
 * **15 utility states**. These states only execute basic robot movements that needed for bridging task states.
   * `turning_back` : Turn the turtlebot by 90 degree from clockwise.
