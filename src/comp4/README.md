@@ -135,7 +135,7 @@ The state machine governing the execution of the whole task is constituted by an
 
 To show the state machine graphically
 <p align="center">
- <img src="doc/rqt.png" width="1000" height="500">
+ <img src="doc/smach_new.png" width="1000" height="500">
 </p>
 
 ### Vision system
